@@ -1,6 +1,7 @@
 from flask import Flask, request
 import requests
 import math
+import os
 
 app = Flask(__name__)
 
@@ -19,24 +20,20 @@ def calcular_trade(data):
     low = float(data["low"])
     symbol = data["symbol"]
 
-    # Entrada: média entre close e último high/low
+    # Entrada: média entre close e high/low dependendo da direção
     entry = (close + (high if direction == "UP" else low)) / 2
 
-    # SL: penúltimo swing high/low — simplificado como high/low (poderias integrar com histórico)
+    # SL: simplificado como high/low contrário à direção (podes melhorar depois com swing real)
     stop_loss = low if direction == "UP" else high
 
-    # Diferença entre entrada e SL
     risk_per_unit = abs(entry - stop_loss)
-
     if risk_per_unit == 0:
         return None
 
-    # Cálculo do tamanho da posição
     size = RISK_USD / risk_per_unit
     size = math.floor(size * 1000) / 1000  # arredondar
 
-    # TP: RR de 1.25:1
-    take_profit = entry + (risk_per_unit * RR) if direction == "UP" else entry - (risk_per_unit * RR)
+    take_profit = entry + risk_per_unit * RR if direction == "UP" else entry - risk_per_unit * RR
 
     return {
         "symbol": symbol,
@@ -49,7 +46,11 @@ def calcular_trade(data):
 
 def enviar_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"})
+    requests.post(url, data={
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": msg,
+        "parse_mode": "Markdown"
+    })
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -58,14 +59,19 @@ def webhook():
 
     if trade:
         mensagem = (
-            f"*SINAL ONDUSDT 📈*\n"
-            f"Direção: *{trade['direction']}*\n"
-            f"Entrada: `{trade['entry']}`\n"
-            f"SL: `{trade['stop_loss']}`\n"
-            f"TP: `{trade['take_profit']}`\n"
-            f"Tamanho: `{trade['size']}` unidades\n"
-            f"Risco: ${RISK_USD}"
+            f"*SINAL {trade['symbol']}*\n"
+            f"📊 Direção: *{trade['direction']}*\n"
+            f"🎯 Entrada: `{trade['entry']}`\n"
+            f"❌ SL: `{trade['stop_loss']}`\n"
+            f"✅ TP: `{trade['take_profit']}`\n"
+            f"💰 Tamanho: `{trade['size']}` unidades\n"
+            f"⚠️ Risco: ${RISK_USD}"
         )
         enviar_telegram(mensagem)
 
     return "OK", 200
+
+# Iniciar servidor com a PORT do Render
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
