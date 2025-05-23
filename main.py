@@ -4,15 +4,17 @@ import os
 
 app = Flask(__name__)
 
-TELEGRAM_TOKEN = "7856624794:AAHA_0Tu01XokJtg4p4eoqeLh4Rp_NvY6ck"
+# Novo token e chat_id confirmados
+TELEGRAM_TOKEN = "7991116114:AAHtm1UmUR5CuPMpOkfhhpOGHmSo_9JxWQk"
 TELEGRAM_CHAT_ID = "727463744"
 
 def enviar_telegram(mensagem):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    requests.post(url, data={
+    data = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": mensagem
-    })
+    }
+    requests.post(url, data=data)
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -21,7 +23,7 @@ def webhook():
     direction = data.get("direction")
     close = data.get("close")
 
-    mensagem = f"SINAL: {symbol}\nDireção: {direction}\nFecho: {close}"
+    mensagem = f"🚨 SINAL DETETADO 🚨\n\nPar: {symbol}\nDireção: {direction}\nPreço de Fecho: {close}"
     enviar_telegram(mensagem)
 
     return "OK", 200
