@@ -4,7 +4,6 @@ import os
 
 app = Flask(__name__)
 
-# Novo token e chat_id confirmados
 TELEGRAM_TOKEN = "7991116114:AAHtm1UmUR5CuPMpOkfhhpOGHmSo_9JxWQk"
 TELEGRAM_CHAT_ID = "727463744"
 
@@ -21,11 +20,24 @@ def webhook():
     data = request.json
     symbol = data.get("symbol")
     direction = data.get("direction")
-    close = data.get("close")
+    candle_close = data.get("candle_close")
+    aux_close = data.get("last_red_close") if direction == "UP" else data.get("last_green_close")
 
-    mensagem = f"🚨 SINAL DETETADO 🚨\n\nPar: {symbol}\nDireção: {direction}\nPreço de Fecho: {close}"
+    if candle_close is None or aux_close is None:
+        return "Missing data", 400
+
+    # Cálculo da entrada
+    entry_price = (candle_close + aux_close) / 2
+
+    mensagem = (
+        f"📈 NOVO SINAL - {symbol}\n"
+        f"📊 Direção: {direction}\n"
+        f"🟡 Fecho da vela: {candle_close}\n"
+        f"🔵 Aux (última {'vermelha' if direction == 'UP' else 'verde'}): {aux_close}\n"
+        f"🎯 Entrada calculada: {round(entry_price, 5)}"
+    )
+
     enviar_telegram(mensagem)
-
     return "OK", 200
 
 if __name__ == "__main__":
