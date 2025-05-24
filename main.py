@@ -20,44 +20,51 @@ def enviar_telegram(mensagem):
 def webhook():
     data = request.json
 
-    # Dados recebidos
     symbol = data.get("symbol")
     direction = data.get("direction")  # "DOWN" ou "UP"
-    candle_close = data.get("candle_close")        # vela de cruzamento
-    last_opposite_close = data.get("last_opposite_close")  # última vela oposta (verde para short, vermelha para long)
-    prev_opposite_close = data.get("prev_opposite_close")  # vela anterior à oposta (usada como SL)
+    candle_close = data.get("candle_close")
+    last_opposite_close = data.get("last_opposite_close")
+    prev_opposite_close = data.get("prev_opposite_close")
 
     if None in [symbol, direction, candle_close, last_opposite_close, prev_opposite_close]:
         return "Dados em falta", 400
 
+    # SHORT
     if direction == "DOWN":
         if prev_opposite_close > last_opposite_close:
             entry_price = (candle_close + last_opposite_close) / 2
             sl_price = prev_opposite_close
+            tp_price = entry_price - (sl_price - entry_price) * 1.25
+
             mensagem = (
                 f"📉 NOVO SHORT - {symbol}\n"
                 f"🔴 Direção: Baixa (EMA cruzamento para baixo)\n"
                 f"📍 Fecho vela de cruzamento: {candle_close}\n"
                 f"📘 Última vela verde (entrada): {last_opposite_close}\n"
-                f"🛑 SL: {sl_price}\n"
-                f"🎯 Entrada: {round(entry_price, 5)}"
+                f"🎯 Entrada: {round(entry_price, 5)}\n"
+                f"🛑 SL: {round(sl_price, 5)}\n"
+                f"🎯 TP: {round(tp_price, 5)}"
             )
             enviar_telegram(mensagem)
             return "Short enviado", 200
         else:
             return "SL inválido para SHORT", 400
 
+    # LONG
     elif direction == "UP":
         if prev_opposite_close < last_opposite_close:
             entry_price = (candle_close + last_opposite_close) / 2
             sl_price = prev_opposite_close
+            tp_price = entry_price + (entry_price - sl_price) * 1.25
+
             mensagem = (
                 f"📈 NOVO LONG - {symbol}\n"
                 f"🟢 Direção: Alta (EMA cruzamento para cima)\n"
                 f"📍 Fecho vela de cruzamento: {candle_close}\n"
                 f"📕 Última vela vermelha (entrada): {last_opposite_close}\n"
-                f"🛑 SL: {sl_price}\n"
-                f"🎯 Entrada: {round(entry_price, 5)}"
+                f"🎯 Entrada: {round(entry_price, 5)}\n"
+                f"🛑 SL: {round(sl_price, 5)}\n"
+                f"🎯 TP: {round(tp_price, 5)}"
             )
             enviar_telegram(mensagem)
             return "Long enviado", 200
